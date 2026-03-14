@@ -26,7 +26,7 @@ source: TrendSource = GoogleTrendSource()
 
 
 @app.get("/trends")
-def get_trends(topic: str = Query(...), limit: int = Query(default=10, le=25)):
+def get_trends(topic: str = Query(...), limit: int = Query(default=10, ge=1, le=25)):
     try:
         keywords = source.fetch(topic, limit)
         return {"topic": topic, "keywords": keywords}
