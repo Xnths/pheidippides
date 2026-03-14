@@ -1,0 +1,71 @@
+services:
+  scraper:
+    build: ./scraper
+    ports:
+      - "8001:8001"
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: blogai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - internal
+
+  api:
+    build: ./api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+      - scraper
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/blogai
+      - REDIS_URL=redis://redis:6379
+      - SCRAPER_URL=http://scraper:8001
+    networks:
+      - internal
+
+  worker:
+    build: ./worker
+    depends_on:
+      - redis
+      - scraper
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SCRAPER_URL=http://scraper:8001
+    networks:
+      - internal
+
+  web:
+    build: ./web
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:3000
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
