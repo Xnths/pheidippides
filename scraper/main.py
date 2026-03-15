@@ -8,7 +8,7 @@ app = FastAPI()
 class TrendSource(ABC):
     @abstractmethod
     def fetch(self, topic: str, limit: int) -> list[str]:
-        pass
+        raise NotImplementedError("Subclasses must implement this method")
 
 
 class GoogleTrendSource(TrendSource):
@@ -31,7 +31,7 @@ def get_trends(topic: str = Query(...), limit: int = Query(default=10, ge=1, le=
         keywords = source.fetch(topic, limit)
         return {"topic": topic, "keywords": keywords}
     except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=f"Internal Pytrends error: {str(e)}")
 
 
 @app.get("/health")

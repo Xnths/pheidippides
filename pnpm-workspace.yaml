@@ -1,4 +1,8 @@
 packages:
-  - "api"
-  - "worker"
-  - "web"
+  - api
+  - worker
+  - web
+
+onlyBuiltDependencies:
+  - esbuild
+  - msgpackr-extract
