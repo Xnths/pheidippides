@@ -9,6 +9,46 @@ const jobRequestSchema = z.object({
   topic: z.string().min(1, 'Topic cannot be empty'),
 });
 
+function validationFailureHandler(result: any, c: any) {
+  if (!result.success) {
+    return c.json(
+      {
+        error: 'Validation Error',
+        issues: result.error.issues,
+      },
+      422
+    );
+  }
+}
+
+function queueFailureHandler(error: any, c: any) {
+  console.error('Failed to enqueue job:', error);
+  return c.json(
+    {
+      error: 'Internal Server Error',
+      message: 'Failed to connect to the queue system',
+    },
+    500
+  );
+}
+
+async function enqueueJob(topic: string, c: any) {
+  try {
+    initQueue();
+    const job = await trendQueue.add('analyze-trend', { topic });
+
+    return c.json(
+      {
+        message: 'Job enqueued successfully',
+        jobId: job.id,
+      },
+      202
+    );
+  } catch (error) {
+    return queueFailureHandler(error, c);
+  }
+}
+
 /**
  * POST /trigger
  * 
@@ -19,41 +59,10 @@ const jobRequestSchema = z.object({
  */
 jobsRouter.post(
   '/trigger',
-  zValidator('json', jobRequestSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        {
-          error: 'Validation Error',
-          issues: result.error.issues,
-        },
-        422
-      );
-    }
-  }),
+  zValidator('json', jobRequestSchema, validationFailureHandler),
   async (c) => {
     const { topic } = c.req.valid('json');
-
-    try {
-      initQueue();
-      const job = await trendQueue.add('analyze-trend', { topic });
-
-      return c.json(
-        {
-          message: 'Job enqueued successfully',
-          jobId: job.id,
-        },
-        202
-      );
-    } catch (error) {
-      console.error('Failed to enqueue job:', error);
-      return c.json(
-        {
-          error: 'Internal Server Error',
-          message: 'Failed to connect to the queue system',
-        },
-        500
-      );
-    }
+    return enqueueJob(topic, c);
   }
 );
 
